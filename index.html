@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>歴史地図クイズ（画像史料版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { margin:0; font-family:"Yu Gothic",sans-serif; background:#f2f2f2; }
+.hidden{display:none;}
+.screen{padding:12px;}
+button{width:100%;padding:12px;margin:6px 0;font-size:16px;border:none;border-radius:8px;background:#4a90e2;color:#fff;}
+button.secondary{background:#888;}
+button.danger{background:#e74c3c;}
+button.choice{background:#2ecc71;}
+input,select{width:100%;padding:8px;margin:6px 0;font-size:16px;}
+#imageArea{position:relative;}
+img{width:100%;display:block;}
+.pin{position:absolute;width:18px;height:18px;background:red;border-radius:50%;transform:translate(-50%,-50%);}
+.card{background:#fff;border-radius:10px;padding:10px;margin:8px 0;}
+.correct{color:green;}
+.wrong{color:red;}
+</style>
+</head>
+<body>
+
+<!-- メニュー -->
+<div class="screen" id="menu">
+  <h3>歴史地図クイズ</h3>
+  <button onclick="switchMode('play')">解答モード</button>
+  <button class="secondary" onclick="switchMode('create')">作問モード</button>
+</div>
+
+<!-- 解答：章選択 -->
+<div class="screen hidden" id="chapterSelectScreen">
+  <h3>章を選択</h3>
+  <select id="chapterSelect"></select>
+  <button onclick="startQuiz()">開始</button>
+  <button class="secondary" onclick="show('menu')">戻る</button>
+</div>
+
+<!-- 作問：章選択 -->
+<div class="screen hidden" id="chapterManageScreen">
+  <h3>作問する章を選択</h3>
+  <select id="chapterManageSelect"></select>
+  <button onclick="selectChapterForCreate()">この章で作問</button>
+  <button onclick="show('chapterCreateScreen')">＋ 新しい章を作成</button>
+  <button class="secondary" onclick="show('menu')">戻る</button>
+</div>
+
+<!-- 作問：章作成 -->
+<div class="screen hidden" id="chapterCreateScreen">
+  <h3>新しい章を作成</h3>
+  <input id="chapterNameInput" placeholder="章名">
+  <input id="chapterImageInput" placeholder="史料画像URL">
+  <select id="chapterMode">
+    <option value="choice">選択式</option>
+    <option value="input">入力式</option>
+  </select>
+  <button onclick="saveChapter()">章を保存</button>
+  <button class="secondary" onclick="show('chapterManageScreen')">戻る</button>
+</div>
+
+<!-- 作問：問題作成 -->
+<div class="screen hidden" id="questionCreateScreen">
+  <h3 id="createChapterTitle"></h3>
+  <div id="imageArea">
+    <img id="chapterImage">
+    <div class="pin hidden" id="createPin"></div>
+  </div>
+  <input id="answerInput" placeholder="正解">
+  <input id="c1" placeholder="選択肢1">
+  <input id="c2" placeholder="選択肢2">
+  <input id="c3" placeholder="選択肢3">
+  <input id="h1" placeholder="ヒント①">
+  <input id="h2" placeholder="ヒント②">
+  <button onclick="saveQuestion()">問題を保存</button>
+  <button onclick="openQuestionList()">問題一覧</button>
+  <button class="secondary" onclick="show('chapterManageScreen')">章選択へ戻る</button>
+</div>
+
+<!-- 作問：問題一覧 -->
+<div class="screen hidden" id="questionListScreen">
+  <h3 id="listChapterTitle"></h3>
+  <div id="questionList"></div>
+  <button onclick="openQuestionCreate()">＋ 作問に戻る</button>
+  <button class="secondary" onclick="show('chapterManageScreen')">章選択へ戻る</button>
+</div>
+
+<script>
+let data=JSON.parse(localStorage.getItem("historyData")||"{}");
+let currentChapter="",tempPos=null;
+function saveData(){localStorage.setItem("historyData",JSON.stringify(data));}
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
+function switchMode(m){
+  if(m==="play"){updateSelect(chapterSelect);show("chapterSelectScreen");}
+  else{updateSelect(chapterManageSelect);show("chapterManageScreen");}
+}
+function updateSelect(sel){
+  sel.innerHTML="";
+  Object.keys(data).forEach(c=>{
+    let o=document.createElement("option");
+    o.value=o.textContent=c;
+    sel.appendChild(o);
+  });
+}
+function saveChapter(){
+  currentChapter=chapterNameInput.value;
+  data[currentChapter]={image:chapterImageInput.value,mode:chapterMode.value,questions:[]};
+  saveData();
+  updateSelect(chapterManageSelect);
+  selectChapterForCreate();
+}
+function selectChapterForCreate(){
+  currentChapter=chapterManageSelect.value;
+  openQuestionCreate();
+}
+function openQuestionCreate(){
+  createChapterTitle.textContent="章："+currentChapter;
+  chapterImage.src=data[currentChapter].image;
+  createPin.classList.add("hidden");
+  tempPos=null;
+  show("questionCreateScreen");
+}
+chapterImage.onclick=e=>{
+  const r=e.target.getBoundingClientRect();
+  tempPos={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};
+  createPin.style.left=tempPos.x*100+"%";
+  createPin.style.top=tempPos.y*100+"%";
+  createPin.classList.remove("hidden");
+};
+function saveQuestion(){
+  if(!tempPos)return alert("地点を指定して");
+  data[currentChapter].questions.push({
+    x:tempPos.x,y:tempPos.y,
+    answer:answerInput.value,
+    choices:[c1.value,c2.value,c3.value],
+    hints:[h1.value,h2.value]
+  });
+  saveData();
+  answerInput.value=c1.value=c2.value=c3.value=h1.value=h2.value="";
+  createPin.classList.add("hidden"); tempPos=null;
+}
+function openQuestionList(){
+  listChapterTitle.textContent="章："+currentChapter+"（問題一覧）";
+  questionList.innerHTML="";
+  data[currentChapter].questions.forEach((q,i)=>{
+    let d=document.createElement("div");
+    d.className="card";
+    d.innerHTML=`<b>${i+1}. ${q.answer}</b>`;
+    let del=document.createElement("button");
+    del.className="danger"; del.textContent="削除";
+    del.onclick=()=>{if(confirm("削除しますか？")){data[currentChapter].questions.splice(i,1);saveData();openQuestionList();}};
+    d.appendChild(del);
+    questionList.appendChild(d);
+  });
+  show("questionListScreen");
+}
+show("menu");
+</script>
+</body>
+</html>
