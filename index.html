@@ -4,158 +4,339 @@
 <meta charset="UTF-8">
 <title>歴史地図クイズ（画像史料版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body { margin:0; font-family:"Yu Gothic",sans-serif; background:#f2f2f2; }
-.hidden{display:none;}
-.screen{padding:12px;}
-button{width:100%;padding:12px;margin:6px 0;font-size:16px;border:none;border-radius:8px;background:#4a90e2;color:#fff;}
-button.secondary{background:#888;}
-button.danger{background:#e74c3c;}
-button.choice{background:#2ecc71;}
-input,select{width:100%;padding:8px;margin:6px 0;font-size:16px;}
-#imageArea{position:relative;}
-img{width:100%;display:block;}
-.pin{position:absolute;width:18px;height:18px;background:red;border-radius:50%;transform:translate(-50%,-50%);}
-.card{background:#fff;border-radius:10px;padding:10px;margin:8px 0;}
-.correct{color:green;}
-.wrong{color:red;}
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f2f2f2;
+}
+.hidden { display: none; }
+.screen { padding: 12px; max-width: 720px; margin: auto; }
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  background: #4a90e2;
+  color: white;
+}
+.secondary { background: #777; }
+.danger { background: #e74c3c; }
+.choice { background: #2ecc71; }
+
+input, select, textarea {
+  width: 100%;
+  padding: 8px;
+  margin: 6px 0;
+  font-size: 16px;
+}
+
+#imageArea { position: relative; }
+img { width: 100%; display: block; }
+
+.pin {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: red;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
+}
+.correct { color: green; }
+.wrong { color: red; }
 </style>
 </head>
+
 <body>
 
 <!-- メニュー -->
 <div class="screen" id="menu">
-  <h3>歴史地図クイズ</h3>
-  <button onclick="switchMode('play')">解答モード</button>
-  <button class="secondary" onclick="switchMode('create')">作問モード</button>
+  <h2>歴史地図クイズ</h2>
+  <button onclick="openPlayChapterSelect()">▶ 解答モード</button>
+  <button class="secondary" onclick="show('chapterManage')">⚙ 作問モード</button>
 </div>
 
 <!-- 解答：章選択 -->
-<div class="screen hidden" id="chapterSelectScreen">
+<div class="screen hidden" id="playChapterSelect">
   <h3>章を選択</h3>
-  <select id="chapterSelect"></select>
-  <button onclick="startQuiz()">開始</button>
+  <select id="playChapterSelectBox"></select>
+
+  <select id="difficultyFilter">
+    <option value="all">すべての難易度</option>
+    <option value="1">★ かんたん</option>
+    <option value="2">★★ ふつう</option>
+    <option value="3">★★★ むずかしい</option>
+  </select>
+
+  <button onclick="startQuizFromSelect()">開始</button>
   <button class="secondary" onclick="show('menu')">戻る</button>
 </div>
 
-<!-- 作問：章選択 -->
-<div class="screen hidden" id="chapterManageScreen">
-  <h3>作問する章を選択</h3>
-  <select id="chapterManageSelect"></select>
-  <button onclick="selectChapterForCreate()">この章で作問</button>
-  <button onclick="show('chapterCreateScreen')">＋ 新しい章を作成</button>
-  <button class="secondary" onclick="show('menu')">戻る</button>
-</div>
+<!-- 作問：章管理 -->
+<div class="screen hidden" id="chapterManage">
+  <h3>章の管理</h3>
 
-<!-- 作問：章作成 -->
-<div class="screen hidden" id="chapterCreateScreen">
-  <h3>新しい章を作成</h3>
-  <input id="chapterNameInput" placeholder="章名">
-  <input id="chapterImageInput" placeholder="史料画像URL">
-  <select id="chapterMode">
+  <input id="newChapterName" placeholder="新しい章名">
+  <input type="file" accept="image/*" onchange="loadChapterImage(event)">
+  <select id="answerType">
     <option value="choice">選択式</option>
     <option value="input">入力式</option>
   </select>
-  <button onclick="saveChapter()">章を保存</button>
-  <button class="secondary" onclick="show('chapterManageScreen')">戻る</button>
+  <button onclick="createChapter()">章を作成</button>
+
+  <hr>
+
+  <select id="chapterSelectCreate"></select>
+  <button onclick="openQuestionCreate()">この章で作問</button>
+
+  <button class="secondary" onclick="show('menu')">戻る</button>
 </div>
 
-<!-- 作問：問題作成 -->
-<div class="screen hidden" id="questionCreateScreen">
-  <h3 id="createChapterTitle"></h3>
+<!-- 作問 -->
+<div class="screen hidden" id="questionCreate">
+  <h3 id="createTitle"></h3>
+
   <div id="imageArea">
-    <img id="chapterImage">
+    <img id="createImage">
     <div class="pin hidden" id="createPin"></div>
   </div>
+
+  <select id="difficultySelect">
+    <option value="1">★ かんたん</option>
+    <option value="2">★★ ふつう</option>
+    <option value="3">★★★ むずかしい</option>
+  </select>
+
   <input id="answerInput" placeholder="正解">
   <input id="c1" placeholder="選択肢1">
   <input id="c2" placeholder="選択肢2">
   <input id="c3" placeholder="選択肢3">
   <input id="h1" placeholder="ヒント①">
   <input id="h2" placeholder="ヒント②">
-  <button onclick="saveQuestion()">問題を保存</button>
-  <button onclick="openQuestionList()">問題一覧</button>
-  <button class="secondary" onclick="show('chapterManageScreen')">章選択へ戻る</button>
+
+  <button onclick="saveQuestion()">保存</button>
+  <button onclick="openQuestionList()">📋 問題一覧</button>
+  <button class="secondary" onclick="show('chapterManage')">戻る</button>
 </div>
 
-<!-- 作問：問題一覧 -->
-<div class="screen hidden" id="questionListScreen">
-  <h3 id="listChapterTitle"></h3>
-  <div id="questionList"></div>
+<!-- 問題一覧 -->
+<div class="screen hidden" id="questionList">
+  <h3 id="listTitle"></h3>
+  <div id="list"></div>
   <button onclick="openQuestionCreate()">＋ 作問に戻る</button>
-  <button class="secondary" onclick="show('chapterManageScreen')">章選択へ戻る</button>
+  <button class="secondary" onclick="show('chapterManage')">戻る</button>
+</div>
+
+<!-- クイズ -->
+<div class="screen hidden" id="quiz">
+  <h3 id="quizTitle"></h3>
+  <div id="imageArea">
+    <img id="quizImage">
+    <div class="pin" id="quizPin"></div>
+  </div>
+  <div class="card">この地点は？</div>
+  <div id="answerArea"></div>
+  <button onclick="showHint()">ヒント</button>
+  <div id="hintArea"></div>
+</div>
+
+<!-- 結果 -->
+<div class="screen hidden" id="result">
+  <h3>結果</h3>
+  <div class="card" id="summary"></div>
+  <ul id="detail"></ul>
+  <button onclick="show('menu')">メニューへ</button>
 </div>
 
 <script>
-let data=JSON.parse(localStorage.getItem("historyData")||"{}");
-let currentChapter="",tempPos=null;
-function saveData(){localStorage.setItem("historyData",JSON.stringify(data));}
-function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
-function switchMode(m){
-  if(m==="play"){updateSelect(chapterSelect);show("chapterSelectScreen");}
-  else{updateSelect(chapterManageSelect);show("chapterManageScreen");}
+let data = JSON.parse(localStorage.getItem("historyData") || "{}");
+let currentChapter="", tempPos=null, quizIndex=0, results=[];
+let tempImage=null, hintStep=0;
+let quizQuestions=[];
+
+function save(){ localStorage.setItem("historyData", JSON.stringify(data)); }
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
-function updateSelect(sel){
-  sel.innerHTML="";
+
+/* ---------- 解答モード ---------- */
+
+function openPlayChapterSelect(){
+  const box=document.getElementById("playChapterSelectBox");
+  box.innerHTML="";
   Object.keys(data).forEach(c=>{
-    let o=document.createElement("option");
+    const o=document.createElement("option");
     o.value=o.textContent=c;
-    sel.appendChild(o);
+    box.appendChild(o);
+  });
+  if(box.options.length===0){ alert("章がまだありません"); return; }
+  show("playChapterSelect");
+}
+
+function startQuizFromSelect(){
+  const ch = playChapterSelectBox.value;
+  const diff = difficultyFilter.value;
+
+  let qs = data[ch].questions;
+  if(diff!=="all") qs = qs.filter(q=>q.difficulty==diff);
+  if(qs.length===0){ alert("該当する問題がありません"); return; }
+
+  quizQuestions = qs;
+  currentChapter = ch;
+  quizIndex = 0;
+  results = [];
+  showQuiz();
+}
+
+function showQuiz(){
+  const q = quizQuestions[quizIndex];
+  quizTitle.textContent = `章：${currentChapter}（★${q.difficulty}）`;
+  quizImage.src = data[currentChapter].image;
+  quizPin.style.left=q.x*100+"%";
+  quizPin.style.top=q.y*100+"%";
+
+  answerArea.innerHTML="";
+  hintArea.textContent="";
+  hintStep=0;
+
+  if(data[currentChapter].type==="choice"){
+    q.choices.forEach(c=>{
+      const b=document.createElement("button");
+      b.className="choice";
+      b.textContent=c;
+      b.onclick=()=>judge(c);
+      answerArea.appendChild(b);
+    });
+  }else{
+    const i=document.createElement("input");
+    const b=document.createElement("button");
+    b.textContent="決定";
+    b.onclick=()=>judge(i.value);
+    answerArea.append(i,b);
+  }
+  show("quiz");
+}
+
+function judge(sel){
+  const q = quizQuestions[quizIndex];
+  results.push({a:q.answer,s:sel,c:sel===q.answer});
+  quizIndex++;
+  quizIndex<quizQuestions.length?showQuiz():showResult();
+}
+
+function showHint(){
+  const h=quizQuestions[quizIndex].hints;
+  if(h[hintStep]) hintArea.textContent+=h[hintStep++]+"\n";
+}
+
+function showResult(){
+  const c=results.filter(r=>r.c).length;
+  summary.textContent=`正解 ${c}/${results.length}`;
+  detail.innerHTML="";
+  results.forEach(r=>{
+    const li=document.createElement("li");
+    li.textContent=r.a+(r.c?"":"（× "+r.s+"）");
+    li.className=r.c?"correct":"wrong";
+    detail.appendChild(li);
+  });
+  show("result");
+}
+
+/* ---------- 作問モード ---------- */
+
+function resizeImage(file, cb){
+  const img=new Image();
+  img.onload=()=>{
+    const max=1200, scale=Math.min(1,max/img.width);
+    const c=document.createElement("canvas");
+    c.width=img.width*scale;
+    c.height=img.height*scale;
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    cb(c.toDataURL("image/jpeg",0.9));
+  };
+  img.src=URL.createObjectURL(file);
+}
+
+function loadChapterImage(e){
+  resizeImage(e.target.files[0], d=>tempImage=d);
+}
+
+function createChapter(){
+  if(!newChapterName.value||!tempImage)return alert("章名と画像必須");
+  data[newChapterName.value]={image:tempImage,questions:[],type:answerType.value};
+  save(); updateChapterSelects();
+  newChapterName.value=""; tempImage=null;
+}
+
+function updateChapterSelects(){
+  chapterSelectCreate.innerHTML="";
+  Object.keys(data).forEach(c=>{
+    const o=document.createElement("option");
+    o.value=o.textContent=c;
+    chapterSelectCreate.appendChild(o);
   });
 }
-function saveChapter(){
-  currentChapter=chapterNameInput.value;
-  data[currentChapter]={image:chapterImageInput.value,mode:chapterMode.value,questions:[]};
-  saveData();
-  updateSelect(chapterManageSelect);
-  selectChapterForCreate();
-}
-function selectChapterForCreate(){
-  currentChapter=chapterManageSelect.value;
-  openQuestionCreate();
-}
+updateChapterSelects();
+
 function openQuestionCreate(){
-  createChapterTitle.textContent="章："+currentChapter;
-  chapterImage.src=data[currentChapter].image;
-  createPin.classList.add("hidden");
-  tempPos=null;
-  show("questionCreateScreen");
+  currentChapter=chapterSelectCreate.value;
+  createTitle.textContent="章："+currentChapter;
+  createImage.src=data[currentChapter].image;
+  show("questionCreate");
 }
-chapterImage.onclick=e=>{
+
+createImage.onclick=e=>{
   const r=e.target.getBoundingClientRect();
   tempPos={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};
   createPin.style.left=tempPos.x*100+"%";
   createPin.style.top=tempPos.y*100+"%";
   createPin.classList.remove("hidden");
 };
+
 function saveQuestion(){
-  if(!tempPos)return alert("地点を指定して");
+  if(!tempPos)return alert("地点未指定");
   data[currentChapter].questions.push({
-    x:tempPos.x,y:tempPos.y,
+    ...tempPos,
     answer:answerInput.value,
     choices:[c1.value,c2.value,c3.value],
-    hints:[h1.value,h2.value]
+    hints:[h1.value,h2.value],
+    difficulty:Number(difficultySelect.value)
   });
-  saveData();
+  save();
   answerInput.value=c1.value=c2.value=c3.value=h1.value=h2.value="";
-  createPin.classList.add("hidden"); tempPos=null;
+  createPin.classList.add("hidden");
+  tempPos=null;
 }
+
 function openQuestionList(){
-  listChapterTitle.textContent="章："+currentChapter+"（問題一覧）";
-  questionList.innerHTML="";
+  listTitle.textContent="章："+currentChapter;
+  list.innerHTML="";
   data[currentChapter].questions.forEach((q,i)=>{
-    let d=document.createElement("div");
+    const d=document.createElement("div");
     d.className="card";
-    d.innerHTML=`<b>${i+1}. ${q.answer}</b>`;
-    let del=document.createElement("button");
-    del.className="danger"; del.textContent="削除";
-    del.onclick=()=>{if(confirm("削除しますか？")){data[currentChapter].questions.splice(i,1);saveData();openQuestionList();}};
-    d.appendChild(del);
-    questionList.appendChild(d);
+    d.textContent=`${i+1}. ★${q.difficulty} ${q.answer}`;
+    const b=document.createElement("button");
+    b.textContent="削除";
+    b.className="danger";
+    b.onclick=()=>{if(confirm("削除？")){data[currentChapter].questions.splice(i,1);save();openQuestionList();}};
+    d.appendChild(b);
+    list.appendChild(d);
   });
-  show("questionListScreen");
+  show("questionList");
 }
-show("menu");
 </script>
 </body>
 </html>
